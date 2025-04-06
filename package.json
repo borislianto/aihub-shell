@@ -11,6 +11,7 @@
   "dependencies": {
     "@react-oauth/google": "^0.12.1",
     "axios": "^1.8.4",
+    "gh": "^2.8.9",
     "jsonwebtoken": "^9.0.2",
     "next": "15.2.4",
     "react": "^19.0.0",

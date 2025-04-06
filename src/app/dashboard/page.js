@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+
+export const dynamic = 'force-dynamic';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -10,11 +13,14 @@ export default function Dashboard() {
   const [showModal, setShowModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDesc, setNewProjectDesc] = useState('');
-  const [editingProject, setEditingProject] = useState(null);  
+  const [editingProject, setEditingProject] = useState(null);
+  
+  // Gunakan hook untuk localStorage
+  const [authToken] = useLocalStorage('authToken', null);
   
   useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    if (!token) {
+    // Periksa autentikasi dengan hook
+    if (!authToken) {
       router.push('/');
       return;
     }
@@ -24,7 +30,7 @@ export default function Dashboard() {
       { id: '1', name: 'Project 1', description: 'This is a sample project for demonstration', createdAt: new Date(), knowledgeCount: 5, chatCount: 10 },
       { id: '2', name: 'Project 2', description: 'Another example project with some description', createdAt: new Date(), knowledgeCount: 3, chatCount: 7 }
     ]);
-  }, [router]);
+  }, [authToken, router]);
   
   const handleCreateProject = () => {
     if (!newProjectName.trim()) return;
@@ -46,7 +52,7 @@ export default function Dashboard() {
   
   const handleEditProject = () => {
     if (!newProjectName.trim()) return;
-  
+    
     setProjects(prev => 
       prev.map(project => 
         project.id === editingProject.id 
@@ -58,7 +64,7 @@ export default function Dashboard() {
           : project
       )
     );
-  
+    
     setNewProjectName('');
     setNewProjectDesc('');
     setEditingProject(null);
@@ -67,15 +73,17 @@ export default function Dashboard() {
   
   const startEditProject = (project, e) => {
     e.stopPropagation(); // Mencegah navigasi ke halaman project
+    
+    // Log untuk debugging
+    console.log("Editing project:", project);
+    
+    // Set state dengan nilai yang ada dari project
     setEditingProject(project);
-    setNewProjectName(project.name);
+    setNewProjectName(project.name || '');
     setNewProjectDesc(project.description || '');
+    
+    // Pastikan modal ditampilkan
     setShowModal(true);
-  };  
-  
-  const handleLogout = () => {
-    localStorage.removeItem('authToken');
-    router.push('/');
   };
   
   return (
@@ -87,7 +95,12 @@ export default function Dashboard() {
           <h2 className="text-2xl font-semibold text-gray-900">Your Projects</h2>
           <button
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200"
-            onClick={() => setShowModal(true)}
+            onClick={() => {
+              setEditingProject(null);
+              setNewProjectName('');
+              setNewProjectDesc('');
+              setShowModal(true);
+            }}
           >
             Add
           </button>
@@ -101,17 +114,17 @@ export default function Dashboard() {
               onClick={() => router.push(`/project/${project.id}`)}
             >
               <div className="p-6">
-				  <div className="flex justify-between">
-				    <h3 className="text-lg font-medium text-gray-900">{project.name}</h3>
-				    <button
-				      onClick={(e) => startEditProject(project, e)}
-				      className="text-gray-500 hover:text-blue-600"
-				    >
-				      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-				        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-				      </svg>
-				    </button>
-				  </div>
+                <div className="flex justify-between">
+                  <h3 className="text-lg font-medium text-gray-900">{project.name}</h3>
+                  <button
+                    onClick={(e) => startEditProject(project, e)}
+                    className="text-gray-500 hover:text-blue-600"
+                  >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                </div>
                 <p className="mt-1 text-sm text-gray-500 line-clamp-2">
                   {project.description}
                 </p>
@@ -145,7 +158,12 @@ export default function Dashboard() {
               </svg>
               <p className="text-gray-500 mb-4">You don&apos;t have any projects yet</p>
               <button
-                onClick={() => setShowModal(true)}
+                onClick={() => {
+                  setEditingProject(null);
+                  setNewProjectName('');
+                  setNewProjectDesc('');
+                  setShowModal(true);
+                }}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200"
               >
                 Create Your First Project
@@ -155,66 +173,63 @@ export default function Dashboard() {
         </div>
       </main>
       
-		  {showModal && (
-		    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-		      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-		        <h3 className="text-lg font-medium text-gray-900 mb-4">
-		          {editingProject ? `Edit Project: ${editingProject.name}` : 'Add New Project'}
-		        </h3>
-      
-		        {/* Debugging info */}
-		        {/* <pre className="text-xs mb-2">{JSON.stringify({editingProject, newProjectName, newProjectDesc}, null, 2)}</pre> */}
-      
-		        <div className="mb-4">
-		          <label className="block text-sm font-medium text-gray-700 mb-1">
-		            Project Name
-		          </label>
-		          <input
-		            type="text"
-		            value={newProjectName}
-		            onChange={(e) => setNewProjectName(e.target.value)}
-		            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-		            placeholder="Enter project name"
-		          />
-		        </div>
-      
-		        <div className="mb-6">
-		          <label className="block text-sm font-medium text-gray-700 mb-1">
-		            Description
-		          </label>
-		          <textarea
-		            value={newProjectDesc}
-		            onChange={(e) => setNewProjectDesc(e.target.value)}
-		            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-		            placeholder="Enter project description"
-		            rows="3"
-		          />
-		        </div>
-      
-		        <div className="flex justify-end space-x-2">
-		          <button
-		            onClick={() => {
-		              setShowModal(false);
-		              setEditingProject(null);
-		              setNewProjectName('');
-		              setNewProjectDesc('');
-		            }}
-		            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-		          >
-		            Cancel
-		          </button>
-		          <button
-		            onClick={editingProject ? handleEditProject : handleCreateProject}
-		            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-		            disabled={!newProjectName.trim()}
-		          >
-		            {editingProject ? 'Save Changes' : 'Create Project'}
-		          </button>
-		        </div>
-		      </div>
-		    </div>
-		  )}
-
+      {/* Modal untuk menambah/edit project */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              {editingProject ? `Edit Project: ${editingProject.name}` : 'Add New Project'}
+            </h3>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Project Name
+              </label>
+              <input
+                type="text"
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter project name"
+              />
+            </div>
+            
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Description
+              </label>
+              <textarea
+                value={newProjectDesc}
+                onChange={(e) => setNewProjectDesc(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter project description"
+                rows="3"
+              />
+            </div>
+            
+            <div className="flex justify-end space-x-2">
+              <button
+                onClick={() => {
+                  setShowModal(false);
+                  setEditingProject(null);
+                  setNewProjectName('');
+                  setNewProjectDesc('');
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={editingProject ? handleEditProject : handleCreateProject}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                disabled={!newProjectName.trim()}
+              >
+                {editingProject ? 'Save Changes' : 'Create Project'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
